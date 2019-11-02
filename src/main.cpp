@@ -1,6 +1,7 @@
 #include "glad.h"
 #include "glfw3.h"
 #include <cassert>
+#include "config.h"
 #include <cstdio>
 #include <string>
 #include "stb_image.h"
@@ -64,7 +65,7 @@ int main( int argc, char** argv )
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow( 640, 640, "Hello World", NULL, NULL );
+    window = glfwCreateWindow( CONFIG_WINDOW_WIDTH_PIXELS, CONFIG_WINDOW_HEIGHT_PIXELS, "Hello World", NULL, NULL );
     if ( !window )
     {
         glfwTerminate();
@@ -83,6 +84,8 @@ int main( int argc, char** argv )
 
     printf( "%s\n", glGetString( GL_VERSION ) );
     printf( "%s\n", glGetString( GL_SHADING_LANGUAGE_VERSION ) );
+    
+    glClearColor( 0.0f, 0.85f, 1.0f, 1.0f );
 
     float vertex_positions[ 16 ] = {
         -0.5f, -0.75f, 0.0f, 0.0f, // Left Bottom
@@ -147,6 +150,7 @@ int main( int argc, char** argv )
     unsigned int shader = createShader( vertex_shader_code, fragment_shader_code );
     glUseProgram( shader );
 
+    glEnable( GL_BLEND );
     glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
     stbi_set_flip_vertically_on_load( 1 );
     int texture_width = 0;
@@ -159,6 +163,9 @@ int main( int argc, char** argv )
         printf( "Error loading texture: %s\n", texture_filename );
     }
     unsigned int texture_id;
+
+    printf( "%d\n", texture_width );
+
     glGenTextures( 1, &texture_id );
     glBindTexture( GL_TEXTURE_2D, texture_id );
 
