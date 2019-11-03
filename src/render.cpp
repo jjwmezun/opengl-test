@@ -8,7 +8,6 @@
 #include "rect.hpp"
 #include "rect_gfx.hpp"
 #include "render.hpp"
-#include <string>
 
 
 
@@ -17,9 +16,9 @@
 //
 ///////////////////////////////////////////////////////////
 
-static unsigned int createShader( const std::string& vertex_shader_code, const std::string& fragment_shader_code );
-static unsigned int compileShader( unsigned int type, const std::string& source );
-static std::string getShaderTypeText( unsigned int type );
+static unsigned int createShader( const char* vertex_shader_code, const char* fragment_shader_code );
+static unsigned int compileShader( unsigned int type, const char* source );
+static const char* getShaderTypeText( unsigned int type );
 static Color background_color = { 0.0f, 0.85f, 1.0f, 1.0f };
 static Rect canvas = { 0.0f, 0.0f, CONFIG_WINDOW_WIDTH_PIXELS, CONFIG_WINDOW_HEIGHT_PIXELS };
 static RectGFX background;
@@ -160,7 +159,7 @@ void render_start()
 //
 ///////////////////////////////////////////////////////////
 
-static unsigned int createShader( const std::string& vertex_shader_code, const std::string& fragment_shader_code )
+static unsigned int createShader( const char* vertex_shader_code, const char* fragment_shader_code )
 {
     unsigned int program = glCreateProgram();
     unsigned int vertex_shader = compileShader( GL_VERTEX_SHADER, vertex_shader_code );
@@ -174,11 +173,10 @@ static unsigned int createShader( const std::string& vertex_shader_code, const s
     return program;
 };
 
-static unsigned int compileShader( unsigned int type, const std::string& source )
+static unsigned int compileShader( unsigned int type, const char* source )
 {
     unsigned int id = glCreateShader( type );
-    const char* src = source.c_str();
-    glShaderSource( id, 1, &src, nullptr );
+    glShaderSource( id, 1, &source, nullptr );
     glCompileShader( id );
 
     int result;
@@ -189,7 +187,7 @@ static unsigned int compileShader( unsigned int type, const std::string& source 
         glGetShaderiv( id, GL_INFO_LOG_LENGTH, &message_length );
         char* message = ( char* )( alloca( message_length * sizeof( char ) ) );
         glGetShaderInfoLog( id, message_length, &message_length, message );
-        printf( "Failed to compile %s shader: %s\n", getShaderTypeText( type ).c_str(), message );
+        printf( "Failed to compile %s shader: %s\n", getShaderTypeText( type ), message );
         glDeleteShader( id );
         return 0;
     }
@@ -197,7 +195,7 @@ static unsigned int compileShader( unsigned int type, const std::string& source 
     return id;
 };
 
-static std::string getShaderTypeText( unsigned int type )
+static const char* getShaderTypeText( unsigned int type )
 {
     return ( type == GL_VERTEX_SHADER )
         ? "vertex"
