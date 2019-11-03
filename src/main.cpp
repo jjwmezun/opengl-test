@@ -3,6 +3,7 @@
 #include <cassert>
 #include "config.h"
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include "stb_image.h"
 
@@ -110,7 +111,7 @@ int main( int argc, char** argv )
     glBufferData( GL_ARRAY_BUFFER, 4 * 4 * sizeof( float ), vertex_positions, GL_STATIC_DRAW );\
 
     glEnableVertexAttribArray( 0 );
-    glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( float ) * 4, 0 );
+    glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( float ) * 4, nullptr );
 
     glEnableVertexAttribArray( 1 );
     glVertexAttribPointer( 1, 2, GL_FLOAT, GL_FALSE, sizeof( float ) * 4, ( const void* )( sizeof( float ) * 2 ) );
@@ -140,54 +141,361 @@ int main( int argc, char** argv )
         "\n"
         "in vec2 v_TexCoord;\n"
         "\n"
+        "uniform sampler2D u_Palette;\n"
         "uniform sampler2D u_Texture;\n"
         "\n"
         "void main()\n"
         "{\n"
-        "   vec4 texColor = texture(u_Texture, v_TexCoord);\n"
-        "   color = texColor;\n"
+        "   vec4 texColor = texture2D(u_Texture, v_TexCoord);\n"
+        "   vec2 index = vec2( texColor.r, 0 );\n"
+        "   vec4 indexedColor = texture2D( u_Palette, index );\n"
+        "   color = indexedColor;\n"
         "}";
     unsigned int shader = createShader( vertex_shader_code, fragment_shader_code );
     glUseProgram( shader );
 
     glEnable( GL_BLEND );
     glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+
     stbi_set_flip_vertically_on_load( 1 );
-    int texture_width = 0;
-    int texture_height = 0;
-    int texture_bpp = 0;
-    const char* texture_filename = "bin/autumn.png";
-    unsigned char* texture_buffer = stbi_load( texture_filename, &texture_width, &texture_height, &texture_bpp, 4 );
-    if ( texture_buffer == nullptr )
+    int palette_width = 256;
+    int palette_height = 1;
+    unsigned char palette_buffer[ 256 * 4 ] =
     {
-        printf( "Error loading texture: %s\n", texture_filename );
-    }
+        0, 0, 0, 0,
+        0, 0, 0, 255,
+        248, 56, 8, 255,
+        248, 152, 80, 255,
+        112, 64, 24, 255,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0
+    };
+    unsigned int palette_id;
+    glGenTextures( 0, &palette_id );
+    glActiveTexture( GL_TEXTURE0 );
+    glBindTexture( GL_TEXTURE_2D, palette_id );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, palette_width, palette_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, palette_buffer );
+    glBindTexture( GL_TEXTURE_2D, 0 );
+    glGenTextures( 0, &palette_id );
+    glBindTexture( GL_TEXTURE_2D, palette_id );
+    int palette_uniform_location = glGetUniformLocation( shader, "u_Palette" );
+    //assert( palette_uniform_location != -1 );
+    glUniform1i( palette_uniform_location, 0 );
+
+
+
     unsigned int texture_id;
-
-    printf( "%d\n", texture_width );
-
     glGenTextures( 1, &texture_id );
+    glActiveTexture( GL_TEXTURE1 );
     glBindTexture( GL_TEXTURE_2D, texture_id );
-
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
 
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, texture_width, texture_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_buffer );
-    glBindTexture( GL_TEXTURE_2D, 0 );
-
-    if ( texture_buffer )
+    FILE* gfx_file;
+    long file_size;
+    unsigned char* file_buffer;
+    size_t fread_flag;
+    gfx_file = fopen( "bin/autumn.jwi", "rb" );
+    if ( !gfx_file )
     {
-        stbi_image_free( texture_buffer );
+        printf( "File didn’t load: %s\n", "bin/autumn.jwi" );
     }
+    else
+    {
+        fseek( gfx_file, 0, SEEK_END );
+        file_size = ftell( gfx_file );
+        rewind( gfx_file );
+        file_buffer = ( unsigned char* )( malloc( sizeof( unsigned char ) * file_size ) );
+        if ( !file_buffer )
+        {
+            printf( "Somehow run out o’ memory for loading file %s\n", "bin/autumn.jwi" );
+        }
+        fread_flag = fread( file_buffer, 1, file_size, gfx_file );
+        if ( ( long )( fread_flag ) != file_size )
+        {
+            fputs( "Reading error", stderr );
+        }
 
-    glActiveTexture( GL_TEXTURE0 );
-    glBindTexture( GL_TEXTURE_2D, texture_id );
+        int texture_width = ( ( unsigned int )( file_buffer[ 0 ] ) << 8 ) | file_buffer[ 1 ];
+        int texture_height = ( ( unsigned int )( file_buffer[ 2 ] ) << 8 ) | file_buffer[ 3 ];
+        unsigned char* texture_buffer = nullptr;
 
-    int texture_uniform_location = glGetUniformLocation( shader, "u_Texture" );
-    assert( texture_uniform_location != -1 );
-    glUniform1i( texture_uniform_location, 0 );
+        const size_t image_data_size = file_size - 4;
+
+        if ( image_data_size != ( size_t )( texture_width * texture_height ) )
+        {
+            printf( "GFX Load Error: File data doesn’t match width & height given!\n" );
+        }
+        else
+        {
+            texture_buffer = ( unsigned char* )( calloc( image_data_size, sizeof( unsigned char ) ) );
+            memcpy( ( void* )( texture_buffer ), ( const void* )( &file_buffer[ 4 ] ), image_data_size );
+        }
+
+        glTexImage2D( GL_TEXTURE_2D, 0, GL_RED, texture_width, texture_height, 0, GL_RED, GL_UNSIGNED_BYTE, texture_buffer );
+        glBindTexture( GL_TEXTURE_2D, 1 );
+        int texture_uniform_location = glGetUniformLocation( shader, "u_Texture" );
+        assert( texture_uniform_location != -1 );
+        glUniform1i( texture_uniform_location, 1 );
+
+        fclose( gfx_file );
+        free( file_buffer );
+    }
 
     /* Loop until the user closes the window */
     while ( !glfwWindowShouldClose( window ) )
