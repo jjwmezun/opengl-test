@@ -439,8 +439,7 @@ int main( int argc, char** argv )
     glUniform1i( palette_uniform_location, 0 );
     int palette_index_uniform_location = glGetUniformLocation( shader, "u_PaletteIndex" );
     assert( palette_index_uniform_location != -1 );
-    unsigned int palette = 1;
-    glUniform1f( palette_index_uniform_location, ( 1.0f / 255.0f ) * 8.0f * ( float )( palette ) );
+    unsigned int palette = 0;
 
 
 
@@ -507,6 +506,7 @@ int main( int argc, char** argv )
     /* Loop until the user closes the window */
     while ( !glfwWindowShouldClose( window ) )
     {
+        glUniform1f( palette_index_uniform_location, ( 1.0f / 255.0f ) * 8.0f * ( float )( palette ) );
         /* Render here */
         glClear( GL_COLOR_BUFFER_BIT );
 
