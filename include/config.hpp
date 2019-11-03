@@ -1,0 +1,6 @@
+#pragma once
+
+#define CONFIG_SHOW_OPENGL_INIT_INFO ( true )
+
+#define CONFIG_WINDOW_WIDTH_PIXELS ( 400 )
+#define CONFIG_WINDOW_HEIGHT_PIXELS ( 224 )
