@@ -7,6 +7,9 @@
 #include <string>
 #include "stb_image.h"
 
+#include "glm.hpp"
+#include "glm/ext/matrix_clip_space.hpp"
+
 static std::string getShaderTypeText( unsigned int type )
 {
     return ( type == GL_VERTEX_SHADER )
@@ -89,10 +92,10 @@ int main( int argc, char** argv )
     glClearColor( 0.0f, 0.85f, 1.0f, 1.0f );
 
     float vertex_positions[ 16 ] = {
-        -0.5f, -0.75f, 0.0f, 0.0f, // Left Bottom
-        0.5f, -0.75f, 1.0f, 0.0f, // Right Bottom
-        0.5f, 0.75f, 1.0f, 1.0f, // Right Top
-        -0.5f, 0.75f, 0.0f, 1.0f // Left Top
+        0.0f, 0.0f, 0.0f, 1.0f, // Left Bottom
+        16.0f, 0.0f, 1.0f, 1.0f, // Right Bottom
+        16.0f, 25.0f, 1.0f, 0.0f, // Right Top
+        0.0f, 25.0f, 0.0f, 0.0f // Left Top
     };
 
     unsigned int vertex_indices[ 6 ] =
@@ -129,9 +132,11 @@ int main( int argc, char** argv )
         "\n"
         "out vec2 v_TexCoord;\n"
         "\n"
+        "uniform mat4 u_MVP;\n"
+        "\n"
         "void main()\n"
         "{\n"
-        "   gl_Position = position;\n"
+        "   gl_Position = u_MVP * position;\n"
         "   v_TexCoord = texCoord;\n"
         "}";
     std::string fragment_shader_code =
@@ -502,6 +507,11 @@ int main( int argc, char** argv )
         fclose( gfx_file );
         free( file_buffer );
     }
+
+    glm::mat4 position_matrix = glm::ortho( 0.0f, 1.0f * CONFIG_WINDOW_WIDTH_PIXELS, 1.0f * CONFIG_WINDOW_HEIGHT_PIXELS, 0.0f, -1.0f, 1.0f );
+    int position_matrix_uniform_location = glGetUniformLocation( shader, "u_MVP" );
+    assert( position_matrix_uniform_location != -1 );
+    glUniformMatrix4fv( position_matrix_uniform_location, 1, GL_FALSE, &position_matrix[ 0 ][ 0 ] );
 
     /* Loop until the user closes the window */
     while ( !glfwWindowShouldClose( window ) )
