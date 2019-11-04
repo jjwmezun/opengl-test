@@ -47,7 +47,7 @@ RectGFX rect_gfx_create( Rect rect, Color color )
 
 void rect_gfx_update_position( RectGFX& rect_gfx, Rect position )
 {
-    float vertex_positions[ 16 ] = {
+    float vertex_positions[ 8 ] = {
         position.x, position.y, // Left Bottom
         rect_right( position ), position.y, // Right Bottom
         rect_right( position ), rect_bottom( position ), // Right Top

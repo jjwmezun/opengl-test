@@ -6,6 +6,7 @@
 #include "rect.hpp"
 #include "rect_gfx.hpp"
 #include "render.hpp"
+#include "texture.hpp"
 
 #define TIMER_LIMIT 1000
 #define NUMBER_OF_SQUARES 255
@@ -18,6 +19,7 @@ int main( int argc, char** argv )
         return -1;
     }
 
+    Texture texture = texture_create( { 48.0f, 64.0f, 16.0f, 25.0f } );
     RectGFX square = rect_gfx_create
     (
         { 16.0f, 16.0f, 16.0f, 16.0f },
@@ -31,6 +33,7 @@ int main( int argc, char** argv )
     {
         current_time = glfwGetTime();
         render_start();
+        render_texture( texture );
         render_rect( square );
         render_present();
 
