@@ -8,11 +8,15 @@
 #include "ogl_error.hpp"
 #include "rect.hpp"
 #include "render.hpp"
-#include "texture.hpp"
+#include <cstring>
+
+#include <unordered_map>
 
 
 #define PALETTE_COLORS 256
 #define CHANNELS_PER_COLOR 4
+#define MAX_TEXTURES 50
+#define MAX_FILENAME 255
 
 
 //
@@ -23,6 +27,7 @@
 static unsigned int createShader( const char* vertex_shader_code, const char* fragment_shader_code );
 static unsigned int compileShader( unsigned int type, const char* source );
 static const char* getShaderTypeText( unsigned int type );
+static void render_init_texture_buffer();
 static void render_init_palette();
 
 
@@ -114,26 +119,40 @@ static unsigned int palette_id;
 static glm::mat4 projection_matrix;
 static Rect canvas = { 0.0f, 0.0f, CONFIG_WINDOW_WIDTH_PIXELS, CONFIG_WINDOW_HEIGHT_PIXELS };
 
+static unsigned int texture_vao;
+static unsigned int rect_vao;
 static int sprite_mvp_uniform_location;
 static int palette_index_uniform_location;
 static int rect_color_uniform_location;
-static unsigned int rect_vao;
 static int rect_mvp_uniform_location;
+
+struct TextureData
+{
+    unsigned char* buffer;
+    int width;
+    int height;
+};
+
+static std::unordered_map<std::string, int> texture_map;
+static TextureData textures[ MAX_TEXTURES ];
+static Texture number_of_textures = 0;
 
 //
 //  PUBLIC FUNCTIONS
 //
 ///////////////////////////////////////////////////////////
 
-void render_texture( const Texture& texture, const Rect& rect )
+void render_texture( Texture texture, const Rect& dest, int palette )
 {
     glUseProgram( sprite_shader );
     glm::mat4 view_matrix = glm::translate( glm::mat4( 1.0f ), glm::vec3( 0.0f, 0.0f, 0.0f ) );
-    glm::mat4 model_matrix = glm::scale( glm::translate( glm::mat4( 1.0f ), glm::vec3( rect.x, rect.y, 0.0f ) ), glm::vec3( rect.w, rect.h, 0.0f ) );
+    glm::mat4 model_matrix = glm::scale( glm::translate( glm::mat4( 1.0f ), glm::vec3( dest.x, dest.y, 0.0f ) ), glm::vec3( dest.w, dest.h, 0.0f ) );
     glm::mat4 mvp = projection_matrix * view_matrix * model_matrix;
     glUniformMatrix4fv( sprite_mvp_uniform_location, 1, GL_FALSE, &mvp[ 0 ][ 0 ] );
-    glUniform1f( palette_index_uniform_location, ( 1.0f / 255.0f ) * 8.0f * ( float )( 0 ) );
-    ogl_call( glBindVertexArray( texture.vao ) );
+    glUniform1f( palette_index_uniform_location, ( 1.0f / 255.0f ) * 8.0f * ( float )( palette ) );
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RED, textures[ texture ].width, textures[ texture ].height, 0, GL_RED, GL_UNSIGNED_BYTE, textures[ texture ].buffer );
+    glBindTexture( GL_TEXTURE_2D, 1 );
+    ogl_call( glBindVertexArray( texture_vao ) );
     ogl_call( glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr ) );
 }
 
@@ -154,6 +173,83 @@ void render_rect( const Rect& rect, int color )
     }
     ogl_call( glBindVertexArray( rect_vao ) );
     ogl_call( glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr ) );
+}
+
+Texture render_get_texture( const char* name )
+{
+    char full_filename[ MAX_FILENAME + 9 ] = "bin/";
+    strcat( full_filename, name );
+    strcat( full_filename, ".jwi" );
+
+    if ( number_of_textures == MAX_TEXTURES )
+    {
+        printf( "Not ’nough room for any mo’ textures." );
+        return -1;
+    }
+
+    unsigned int texture_id;
+    glGenTextures( 1, &texture_id );
+    glActiveTexture( GL_TEXTURE1 );
+    glBindTexture( GL_TEXTURE_2D, texture_id );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+
+    FILE* gfx_file;
+    long file_size;
+    unsigned char* file_buffer;
+    size_t fread_flag;
+    gfx_file = fopen( full_filename, "rb" );
+    if ( !gfx_file )
+    {
+        printf( "File didn’t load: %s\n", full_filename );
+        return -1;
+    }
+    else
+    {
+        fseek( gfx_file, 0, SEEK_END );
+        file_size = ftell( gfx_file );
+        rewind( gfx_file );
+        file_buffer = ( unsigned char* )( malloc( sizeof( unsigned char ) * file_size ) );
+        if ( !file_buffer )
+        {
+            printf( "Somehow run out o’ memory for loading file %s\n", full_filename );
+        }
+        fread_flag = fread( file_buffer, 1, file_size, gfx_file );
+        if ( ( long )( fread_flag ) != file_size )
+        {
+            fputs( "Reading error", stderr );
+        }
+
+        int texture_width = ( ( unsigned int )( file_buffer[ 0 ] ) << 8 ) | file_buffer[ 1 ];
+        int texture_height = ( ( unsigned int )( file_buffer[ 2 ] ) << 8 ) | file_buffer[ 3 ];
+        unsigned char* texture_buffer = nullptr;
+
+        const size_t image_data_size = file_size - 4;
+
+        if ( image_data_size != ( size_t )( texture_width * texture_height ) )
+        {
+            printf( "GFX Load Error: File data doesn’t match width & height given!\n" );
+        }
+        else
+        {
+            texture_buffer = ( unsigned char* )( calloc( image_data_size, sizeof( unsigned char ) ) );
+            memcpy( ( void* )( texture_buffer ), ( const void* )( &file_buffer[ 4 ] ), image_data_size );
+        }
+
+        textures[ number_of_textures ] =
+        {
+            texture_buffer,
+            texture_width,
+            texture_height
+        };
+        ++number_of_textures;
+
+        fclose( gfx_file );
+        free( file_buffer );
+        return number_of_textures - 1;
+    }
 }
 
 bool render_init_window()
@@ -216,6 +312,7 @@ void render_init_gfx()
     palette_index_uniform_location = glGetUniformLocation( sprite_shader, "u_PaletteIndex" );
     assert( palette_index_uniform_location != -1 );
 
+    render_init_texture_buffer();
     render_init_palette();
 };
 
@@ -280,6 +377,28 @@ static const char* getShaderTypeText( unsigned int type )
         : "fragment";
 };
 
+static void render_init_texture_buffer()
+{
+    glGenVertexArrays( 1, &texture_vao );
+    glBindVertexArray( texture_vao );
+
+    unsigned int buffer;
+    glGenBuffers( 1, &buffer );
+    glBindBuffer( GL_ARRAY_BUFFER, buffer );
+    glBufferData( GL_ARRAY_BUFFER, 4 * 4 * sizeof( float ), vertex_positions, GL_STATIC_DRAW );\
+
+    glEnableVertexAttribArray( 0 );
+    glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( float ) * 4, nullptr );
+
+    glEnableVertexAttribArray( 1 );
+    glVertexAttribPointer( 1, 2, GL_FLOAT, GL_FALSE, sizeof( float ) * 4, ( const void* )( sizeof( float ) * 2 ) );
+
+    unsigned int ibo;
+    glGenBuffers( 1, &ibo );
+    glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibo );
+    glBufferData( GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof( unsigned int ), vertex_indices, GL_STATIC_DRAW );
+}
+
 static void render_init_palette()
 {
     unsigned char palette_buffer[ PALETTE_COLORS * CHANNELS_PER_COLOR ] =
@@ -294,12 +413,12 @@ static void render_init_palette()
         0, 0, 0, 0,
 
         0, 0, 0, 0,
+        255,255,255,255,
+        226, 184, 255, 255,
+        154,  96, 246, 255,
+         81,  34, 177, 255,
+          9,   0,  38, 255,
         0, 0, 0, 255,
-        120, 80, 24, 255,
-        248, 152, 80, 255,
-        255, 255, 255, 255,
-        0, 0, 0, 0,
-        0, 0, 0, 0,
         0, 0, 0, 0,
 
         0, 0, 0, 0,

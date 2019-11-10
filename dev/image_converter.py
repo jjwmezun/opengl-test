@@ -1,5 +1,7 @@
 from PIL import Image
 
+import sys
+
 def int_to_bytes( value ):
     return value.to_bytes( 2, byteorder='big' )
 
@@ -50,4 +52,8 @@ def convert_file( local_file ):
     f.write( output_data )
     f.close()
 
-convert_file( "autumn" )
+if ( len( sys.argv ) < 2 ):
+    print( "Needs a’least 1 argument." )
+else:
+    for i in range( 1, len( sys.argv ) ):
+        convert_file( sys.argv[ i ] )
