@@ -70,11 +70,12 @@ const char* sprite_vertex_shader_code =
     "out vec2 v_TexCoord;\n"
     "\n"
     "uniform mat4 u_MVP;\n"
+    "uniform vec2 u_CoordOffset;\n"
     "\n"
     "void main()\n"
     "{\n"
     "   gl_Position = u_MVP * position;\n"
-    "   v_TexCoord = texCoord;\n"
+    "   v_TexCoord = texCoord + u_CoordOffset;\n"
     "}";
 
 const char* sprite_fragment_shader_code =
@@ -126,6 +127,7 @@ static unsigned int rect_vao;
 static int sprite_mvp_uniform_location;
 static int palette_index_uniform_location;
 static int sprite_alpha_uniform_location;
+static int sprite_coord_offset_uniform_location;
 static int rect_color_uniform_location;
 static int rect_mvp_uniform_location;
 
@@ -147,6 +149,8 @@ static Texture number_of_textures = 0;
 
 void render_texture( Texture texture, const Rect& src, const Rect& dest, int palette, bool flip_x, bool flip_y, float rotation, float alpha, float rotation_origin_x, float rotation_origin_y )
 {
+    glActiveTexture( GL_TEXTURE1 );
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, textures[ texture ].width, textures[ texture ].height, 0, GL_RGBA, GL_UNSIGNED_BYTE, textures[ texture ].buffer );
     if ( flip_x )
     {
         rotation_origin_x *= -1.0f;
@@ -170,7 +174,12 @@ void render_texture( Texture texture, const Rect& src, const Rect& dest, int pal
     glUniformMatrix4fv( sprite_mvp_uniform_location, 1, GL_FALSE, &mvp[ 0 ][ 0 ] );
     glUniform1f( palette_index_uniform_location, ( 1.0f / 255.0f ) * 8.0f * ( float )( palette ) );
     glUniform1f( sprite_alpha_uniform_location, alpha );
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_RED, textures[ texture ].width, textures[ texture ].height, 0, GL_RED, GL_UNSIGNED_BYTE, textures[ texture ].buffer );
+    glUniform2f( sprite_coord_offset_uniform_location, 0.0f, 0.0f );
+    glTexSubImage2D( GL_TEXTURE_2D, 0, 0.25f, 0.25f, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, textures[ texture ].buffer );
+    if ( GLenum error = glGetError() )
+    {
+        printf( "OpenGL Error: %d\n", error );
+    }
     glBindTexture( GL_TEXTURE_2D, 1 );
     ogl_call( glBindVertexArray( texture_vao ) );
     ogl_call( glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr ) );
@@ -254,8 +263,12 @@ Texture render_get_texture( const char* name )
         }
         else
         {
-            texture_buffer = ( unsigned char* )( calloc( image_data_size, sizeof( unsigned char ) ) );
-            memcpy( ( void* )( texture_buffer ), ( const void* )( &file_buffer[ 4 ] ), image_data_size );
+            texture_buffer = ( unsigned char* )( calloc( image_data_size * 4, sizeof( unsigned char ) ) );
+            //memcpy( ( void* )( texture_buffer ), ( const void* )( &file_buffer[ 4 ] ), image_data_size );
+            for ( int i = 0; i < image_data_size; ++i )
+            {
+                texture_buffer[ i * 4 ] = file_buffer[ 4 + i ];
+            }
         }
 
         textures[ number_of_textures ] =
@@ -333,6 +346,8 @@ void render_init_gfx()
     assert( sprite_mvp_uniform_location != -1 );
     palette_index_uniform_location = glGetUniformLocation( sprite_shader, "u_PaletteIndex" );
     assert( palette_index_uniform_location != -1 );
+    sprite_coord_offset_uniform_location = glGetUniformLocation( sprite_shader, "u_CoordOffset" );
+    assert( sprite_coord_offset_uniform_location != -1 );
 
     render_init_texture_buffer();
     render_init_palette();

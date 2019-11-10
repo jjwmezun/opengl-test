@@ -27,9 +27,9 @@ int main( int argc, char** argv )
     while ( !render_window_closed() )
     {
         render_start();
-        render_rect( hydrant_dest_rect, 2 );
+        //render_rect( hydrant_dest_rect, 2 );
         render_texture( autumn_texture, autumn_src_rect, autumn_dest_rect, 0, true, false, rotation, 0.75f, 8.0f, 12.5f );
-        render_texture( hydrant_texture, hydrant_src_rect, hydrant_dest_rect, 1 );
+        //render_texture( hydrant_texture, hydrant_src_rect, hydrant_dest_rect, 1 );
         render_present();
 
         rotation += 1.0f;
