@@ -7,21 +7,21 @@
 #include "texture.hpp"
 #include "rect.hpp"
 
+static float vertex_positions[ 16 ] = {
+    0.0f, 0.0f, 0.0f, 1.0f,// Left Bottom
+    1.0f, 0.0f, 1.0f, 1.0f, // Right Bottom
+    1.0f, 1.0f, 1.0f, 0.0f, // Right Top
+    0.0f, 1.0f, 0.0f, 0.0f // Left Top
+};
+
 static unsigned int vertex_indices[ 6 ] =
 {
     0, 1, 2,
     2, 3, 0
 };
 
-Texture texture_create( Rect rect )
+Texture texture_create()
 {
-    float vertex_positions[ 16 ] = {
-        rect.x, rect.y, 0.0f, 1.0f,// Left Bottom
-        rect_right( rect ), rect.y, 1.0f, 1.0f, // Right Bottom
-        rect_right( rect ), rect_bottom( rect ), 1.0f, 0.0f, // Right Top
-        rect.x, rect_bottom( rect ), 0.0f, 0.0f // Left Top
-    };
-
     unsigned int vao;
     glGenVertexArrays( 1, &vao );
     glBindVertexArray( vao );

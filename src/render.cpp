@@ -4,6 +4,7 @@
 #include "glfw3.h"
 #include "glm.hpp"
 #include "glm/ext/matrix_clip_space.hpp"
+#include "glm/ext/matrix_transform.hpp"
 #include "ogl_error.hpp"
 #include "rect.hpp"
 #include "rect_gfx.hpp"
@@ -102,11 +103,17 @@ static RectGFX background;
 //
 ///////////////////////////////////////////////////////////
 
-void render_texture( const Texture& texture )
+void render_texture( const Texture& texture, Rect rect )
 {
     glUseProgram( sprite_shader );
     
     //glBindTexture( GL_TEXTURE_2D, 1 );
+
+    glm::mat4 view = glm::scale( glm::translate( glm::mat4( 1.0f ), glm::vec3( rect.x, rect.y, 0.0f ) ), glm::vec3( rect.w, rect.h, 0.0f ) );
+    glm::mat4 mvp = position_matrix * view;
+    int position_matrix_uniform_location = glGetUniformLocation( sprite_shader, "u_MVP" );
+    assert( position_matrix_uniform_location != -1 );
+    glUniformMatrix4fv( position_matrix_uniform_location, 1, GL_FALSE, &mvp[ 0 ][ 0 ] );
 
     int texture_uniform_location = glGetUniformLocation( sprite_shader, "u_Texture" );
     assert( texture_uniform_location != -1 );
@@ -170,11 +177,6 @@ void render_init_gfx()
 
     ogl_call( glUseProgram( rect_shader ) );
     int position_matrix_uniform_location = glGetUniformLocation( rect_shader, "u_MVP" );
-    assert( position_matrix_uniform_location != -1 );
-    glUniformMatrix4fv( position_matrix_uniform_location, 1, GL_FALSE, &position_matrix[ 0 ][ 0 ] );
-
-    ogl_call( glUseProgram( sprite_shader ) );
-    position_matrix_uniform_location = glGetUniformLocation( sprite_shader, "u_MVP" );
     assert( position_matrix_uniform_location != -1 );
     glUniformMatrix4fv( position_matrix_uniform_location, 1, GL_FALSE, &position_matrix[ 0 ][ 0 ] );
 

@@ -19,7 +19,8 @@ int main( int argc, char** argv )
         return -1;
     }
 
-    Texture texture = texture_create( { 48.0f, 64.0f, 16.0f, 25.0f } );
+    const Rect texture_rect = { 48.0f, 64.0f, 16.0f, 25.0f };
+    Texture texture = texture_create();
     RectGFX square = rect_gfx_create
     (
         { 16.0f, 16.0f, 16.0f, 16.0f },
@@ -33,7 +34,7 @@ int main( int argc, char** argv )
     {
         current_time = glfwGetTime();
         render_start();
-        render_texture( texture );
+        render_texture( texture, texture_rect );
         render_rect( square );
         render_present();
 

@@ -10,4 +10,4 @@ struct Texture
     unsigned int ibo;
 };
 
-Texture texture_create( Rect rect );
+Texture texture_create();
