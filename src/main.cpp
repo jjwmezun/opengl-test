@@ -26,7 +26,7 @@ int main( int argc, char** argv )
     {
         render_start();
         render_rect( hydrant_dest_rect, 2 );
-        render_texture( autumn_texture, autumn_src_rect, autumn_dest_rect, 0, true );
+        render_texture( autumn_texture, autumn_src_rect, autumn_dest_rect, 0, true, false, 0.75f );
         render_texture( hydrant_texture, hydrant_src_rect, hydrant_dest_rect, 1 );
         render_present();
 

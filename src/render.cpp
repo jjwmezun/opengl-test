@@ -87,12 +87,14 @@ const char* sprite_fragment_shader_code =
     "uniform sampler2D u_Palette;\n"
     "uniform sampler2D u_Texture;\n"
     "uniform float u_PaletteIndex;\n"
+    "uniform float u_Alpha;\n"
     "\n"
     "void main()\n"
     "{\n"
     "   vec4 texColor = texture2D(u_Texture, v_TexCoord);\n"
     "   vec2 index = vec2( texColor.r + u_PaletteIndex, 0 );\n"
     "   vec4 indexedColor = texture2D( u_Palette, index );\n"
+    "   indexedColor.a *= u_Alpha;\n"
     "   color = indexedColor;\n"
     "}";
 
@@ -123,6 +125,7 @@ static unsigned int texture_vao;
 static unsigned int rect_vao;
 static int sprite_mvp_uniform_location;
 static int palette_index_uniform_location;
+static int sprite_alpha_uniform_location;
 static int rect_color_uniform_location;
 static int rect_mvp_uniform_location;
 
@@ -142,7 +145,7 @@ static Texture number_of_textures = 0;
 //
 ///////////////////////////////////////////////////////////
 
-void render_texture( Texture texture, const Rect& src, const Rect& dest, int palette, bool flip_x, bool flip_y )
+void render_texture( Texture texture, const Rect& src, const Rect& dest, int palette, bool flip_x, bool flip_y, float alpha )
 {
     glUseProgram( sprite_shader );
     glm::mat4 view_matrix = glm::translate( glm::mat4( 1.0f ), glm::vec3( 0.0f, 0.0f, 0.0f ) );
@@ -150,6 +153,7 @@ void render_texture( Texture texture, const Rect& src, const Rect& dest, int pal
     glm::mat4 mvp = projection_matrix * view_matrix * model_matrix;
     glUniformMatrix4fv( sprite_mvp_uniform_location, 1, GL_FALSE, &mvp[ 0 ][ 0 ] );
     glUniform1f( palette_index_uniform_location, ( 1.0f / 255.0f ) * 8.0f * ( float )( palette ) );
+    glUniform1f( sprite_alpha_uniform_location, alpha );
     glTexImage2D( GL_TEXTURE_2D, 0, GL_RED, textures[ texture ].width, textures[ texture ].height, 0, GL_RED, GL_UNSIGNED_BYTE, textures[ texture ].buffer );
     glBindTexture( GL_TEXTURE_2D, 1 );
     ogl_call( glBindVertexArray( texture_vao ) );
@@ -304,6 +308,8 @@ void render_init_gfx()
     int texture_uniform_location = glGetUniformLocation( sprite_shader, "u_Texture" );
     assert( texture_uniform_location != -1 );
     glUniform1i( texture_uniform_location, 1 );
+    sprite_alpha_uniform_location = glGetUniformLocation( sprite_shader, "u_Alpha" );
+    assert( sprite_alpha_uniform_location != -1 );
     int palette_uniform_location = glGetUniformLocation( sprite_shader, "u_Palette" );
     assert( palette_uniform_location != -1 );
     glUniform1i( palette_uniform_location, 0 );
