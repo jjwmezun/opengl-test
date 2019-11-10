@@ -145,11 +145,27 @@ static Texture number_of_textures = 0;
 //
 ///////////////////////////////////////////////////////////
 
-void render_texture( Texture texture, const Rect& src, const Rect& dest, int palette, bool flip_x, bool flip_y, float alpha )
+void render_texture( Texture texture, const Rect& src, const Rect& dest, int palette, bool flip_x, bool flip_y, float rotation, float alpha, float rotation_origin_x, float rotation_origin_y )
 {
+    if ( flip_x )
+    {
+        rotation_origin_x *= -1.0f;
+    }
+    if ( flip_y )
+    {
+        rotation_origin_y *= -1.0f;
+    }
+
     glUseProgram( sprite_shader );
     glm::mat4 view_matrix = glm::translate( glm::mat4( 1.0f ), glm::vec3( 0.0f, 0.0f, 0.0f ) );
-    glm::mat4 model_matrix = glm::scale( glm::translate( glm::mat4( 1.0f ), glm::vec3( dest.x, dest.y, 0.0f ) ), glm::vec3( dest.w * ( ( flip_x ) ? -1.0f : 1.0f ), dest.h * ( ( flip_y ) ? -1.0f : 1.0f ), 0.0f ) );
+
+    glm::mat4 model_matrix = glm::mat4( 1.0f );
+    model_matrix = glm::translate( model_matrix, glm::vec3( dest.x, dest.y, 0.0f ) );
+    model_matrix = glm::translate( model_matrix, glm::vec3( rotation_origin_x, rotation_origin_y, 0.0f ) );
+    model_matrix = glm::rotate( model_matrix, glm::radians( rotation ), glm::vec3( 0.0f, 0.0f, 1.0f ) );
+    model_matrix = glm::translate( model_matrix, glm::vec3( -rotation_origin_x, -rotation_origin_y, 0.0f ) );
+    model_matrix = glm::scale( model_matrix, glm::vec3( dest.w * ( ( flip_x ) ? -1.0f : 1.0f ), dest.h * ( ( flip_y ) ? -1.0f : 1.0f ), 0.0f ) );
+    rotation += 1.0f;
     glm::mat4 mvp = projection_matrix * view_matrix * model_matrix;
     glUniformMatrix4fv( sprite_mvp_uniform_location, 1, GL_FALSE, &mvp[ 0 ][ 0 ] );
     glUniform1f( palette_index_uniform_location, ( 1.0f / 255.0f ) * 8.0f * ( float )( palette ) );
