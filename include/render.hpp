@@ -5,7 +5,7 @@
 class Rect;
 class RectGFX;
 
-void render_texture( Texture texture, const Rect& dest, int palette );
+void render_texture( Texture texture, const Rect& src, const Rect& dest, int palette, bool flip_x = false, bool flip_y = false );
 void render_rect( const Rect& rect, int color );
 
 Texture render_get_texture( const char* name );
