@@ -133,9 +133,11 @@ static int rect_mvp_uniform_location;
 
 struct TextureData
 {
-    unsigned char* buffer;
+    unsigned int id;
+    unsigned int framebuffer;
     int width;
     int height;
+    unsigned char* buffer;
 };
 
 static std::unordered_map<std::string, int> texture_map;
@@ -150,7 +152,9 @@ static Texture number_of_textures = 0;
 void render_texture( Texture texture, const Rect& src, const Rect& dest, int palette, bool flip_x, bool flip_y, float rotation, float alpha, float rotation_origin_x, float rotation_origin_y )
 {
     glActiveTexture( GL_TEXTURE1 );
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, textures[ texture ].width, textures[ texture ].height, 0, GL_RGBA, GL_UNSIGNED_BYTE, textures[ texture ].buffer );
+    glBindTexture( GL_TEXTURE_2D, textures[ texture ].id );
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, 64, 32, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr );
+    glBindTexture( GL_TEXTURE_2D, 0 );
     if ( flip_x )
     {
         rotation_origin_x *= -1.0f;
@@ -168,19 +172,17 @@ void render_texture( Texture texture, const Rect& src, const Rect& dest, int pal
     model_matrix = glm::translate( model_matrix, glm::vec3( rotation_origin_x, rotation_origin_y, 0.0f ) );
     model_matrix = glm::rotate( model_matrix, glm::radians( rotation ), glm::vec3( 0.0f, 0.0f, 1.0f ) );
     model_matrix = glm::translate( model_matrix, glm::vec3( -rotation_origin_x, -rotation_origin_y, 0.0f ) );
-    model_matrix = glm::scale( model_matrix, glm::vec3( dest.w * ( ( flip_x ) ? -1.0f : 1.0f ), dest.h * ( ( flip_y ) ? -1.0f : 1.0f ), 0.0f ) );
+    model_matrix = glm::scale( model_matrix, glm::vec3( 64.0f * ( ( flip_x ) ? -1.0f : 1.0f ), 16.0f * ( ( flip_y ) ? -1.0f : 1.0f ), 0.0f ) );
     rotation += 1.0f;
     glm::mat4 mvp = projection_matrix * view_matrix * model_matrix;
     glUniformMatrix4fv( sprite_mvp_uniform_location, 1, GL_FALSE, &mvp[ 0 ][ 0 ] );
     glUniform1f( palette_index_uniform_location, ( 1.0f / 255.0f ) * 8.0f * ( float )( palette ) );
     glUniform1f( sprite_alpha_uniform_location, alpha );
     glUniform2f( sprite_coord_offset_uniform_location, 0.0f, 0.0f );
-    glTexSubImage2D( GL_TEXTURE_2D, 0, 0.25f, 0.25f, 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, textures[ texture ].buffer );
-    if ( GLenum error = glGetError() )
-    {
-        printf( "OpenGL Error: %d\n", error );
-    }
-    glBindTexture( GL_TEXTURE_2D, 1 );
+    glBindTexture( GL_TEXTURE_2D, textures[ texture ].id );
+    ogl_clear_error();
+    glTexSubImage2D( GL_TEXTURE_2D, 0, 16, 0, 32, 32, GL_RGBA, GL_UNSIGNED_BYTE, textures[ texture ].buffer );
+    ogl_check_error();
     ogl_call( glBindVertexArray( texture_vao ) );
     ogl_call( glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr ) );
 }
@@ -215,6 +217,11 @@ Texture render_get_texture( const char* name )
         printf( "Not ’nough room for any mo’ textures." );
         return -1;
     }
+
+    unsigned int framebuffer;
+    //glGenFramebuffers( 1, &framebuffer );
+    //glBindFramebuffer( GL_FRAMEBUFFER, framebuffer );
+    //ogl_check_error();
 
     unsigned int texture_id;
     glGenTextures( 1, &texture_id );
@@ -273,9 +280,11 @@ Texture render_get_texture( const char* name )
 
         textures[ number_of_textures ] =
         {
-            texture_buffer,
+            texture_id,
+            framebuffer,
             texture_width,
-            texture_height
+            texture_height,
+            texture_buffer
         };
         ++number_of_textures;
 
@@ -304,20 +313,22 @@ int render_window_closed()
 
 void render_init_gfx()
 {
-    ogl_call( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
-    ogl_call( glEnable( GL_BLEND ) );
-    ogl_call( glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA ) );
+    glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
+    glEnable( GL_BLEND );
+    glEnable( GL_TEXTURE_2D );
+    
+    glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
     projection_matrix = glm::ortho( 0.0f, 1.0f * CONFIG_WINDOW_WIDTH_PIXELS, 1.0f * CONFIG_WINDOW_HEIGHT_PIXELS, 0.0f, -1.0f, 1.0f );
 
     rect_shader = createShader( rect_vertex_shader_code, rect_fragment_shader_code );
-    ogl_call( glUseProgram( rect_shader ) );
+    glUseProgram( rect_shader );
     rect_color_uniform_location = glGetUniformLocation( rect_shader, "u_Color" );
     dassert( rect_color_uniform_location != -1 );
     rect_mvp_uniform_location = glGetUniformLocation( rect_shader, "u_MVP" );
-    assert( rect_mvp_uniform_location != -1 );
+    dassert( rect_mvp_uniform_location != -1 );
 
-    ogl_call( glGenVertexArrays( 1, &rect_vao ) );
-    ogl_call( glBindVertexArray( rect_vao ) );
+    glGenVertexArrays( 1, &rect_vao );
+    glBindVertexArray( rect_vao );
 
     unsigned int buffer;
     ogl_call( glGenBuffers( 1, &buffer ) );

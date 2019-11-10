@@ -7,3 +7,5 @@
 
 void ogl_clear_error();
 bool ogl_log_call( const char* function, const char* file, int line );
+
+void ogl_check_error();

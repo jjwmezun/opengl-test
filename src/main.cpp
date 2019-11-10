@@ -19,7 +19,7 @@ int main( int argc, char** argv )
     const Rect autumn_src_rect = { 0.0f, 0.0f, 16.0f, 25.0f };
     const Rect hydrant_dest_rect = { 192.0f, 32.0f, 16.0f, 16.0f };
     const Rect hydrant_src_rect = { 16.0f, 16.0f, 16.0f, 16.0f };
-    Texture autumn_texture = render_get_texture( "autumn" );
+    //Texture autumn_texture = render_get_texture( "autumn" );
     Texture hydrant_texture = render_get_texture( "hydrant" );
 
     float rotation = 0.0f;
@@ -28,8 +28,8 @@ int main( int argc, char** argv )
     {
         render_start();
         //render_rect( hydrant_dest_rect, 2 );
-        render_texture( autumn_texture, autumn_src_rect, autumn_dest_rect, 0, true, false, rotation, 0.75f, 8.0f, 12.5f );
-        //render_texture( hydrant_texture, hydrant_src_rect, hydrant_dest_rect, 1 );
+        //render_texture( autumn_texture, autumn_src_rect, autumn_dest_rect, 0 );
+        render_texture( hydrant_texture, hydrant_src_rect, hydrant_dest_rect, 1 );
         render_present();
 
         rotation += 1.0f;

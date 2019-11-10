@@ -11,8 +11,16 @@ bool ogl_log_call( const char* function, const char* file, int line )
 {
     if ( GLenum error = glGetError() )
     {
-        printf( "OpenGL Error: %s in %s in %s on line %d\n", error, function, file, line );
+        printf( "OpenGL Error: %d in %s in %s on line %d\n", error, function, file, line );
         return false;
     }
     return true;
 };
+
+void ogl_check_error()
+{
+    while ( GLenum error = glGetError() )
+    {
+        printf( "OpenGL Error: %d\n", error );
+    }
+}
