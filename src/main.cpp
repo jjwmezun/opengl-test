@@ -4,7 +4,6 @@
 #include "glad.h"
 #include "glfw3.h"
 #include "rect.hpp"
-#include "rect_gfx.hpp"
 #include "render.hpp"
 #include "texture.hpp"
 
@@ -19,13 +18,8 @@ int main( int argc, char** argv )
         return -1;
     }
 
-    const Rect texture_rect = { 48.0f, 64.0f, 16.0f, 25.0f };
+    const Rect texture_rect = { 128.0f, 96.0f, 16.0f, 25.0f };
     Texture texture = texture_create();
-    RectGFX square = rect_gfx_create
-    (
-        { 16.0f, 16.0f, 16.0f, 16.0f },
-        { 1.0f, 0.0f, 0.0f, 1.0f }
-    );
 
     double times_list[ TIMER_LIMIT ];
     int times_counter = 0;
@@ -35,7 +29,7 @@ int main( int argc, char** argv )
         current_time = glfwGetTime();
         render_start();
         render_texture( texture, texture_rect );
-        render_rect( square );
+        render_rect( { 16.0f, 16.0f, 16.0f, 16.0f }, 2 );
         render_present();
 
         double render_time = glfwGetTime() - current_time;

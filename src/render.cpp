@@ -7,10 +7,12 @@
 #include "glm/ext/matrix_transform.hpp"
 #include "ogl_error.hpp"
 #include "rect.hpp"
-#include "rect_gfx.hpp"
 #include "render.hpp"
 #include "texture.hpp"
 
+
+#define PALETTE_COLORS 256
+#define CHANNELS_PER_COLOR 4
 
 
 //
@@ -88,60 +90,69 @@ const char* sprite_fragment_shader_code =
     "   vec4 indexedColor = texture2D( u_Palette, index );\n"
     "   color = indexedColor;\n"
     "}";
+
+static float palette_colors[ PALETTE_COLORS ][ CHANNELS_PER_COLOR ] = {};
+static float background_color[ CHANNELS_PER_COLOR ] = { 0.0f, 0.5f, 1.0f, 1.0f };
+
+static float vertex_positions[ 16 ] = {
+    0.0f, 0.0f, 0.0f, 1.0f,// Left Bottom
+    1.0f, 0.0f, 1.0f, 1.0f, // Right Bottom
+    1.0f, 1.0f, 1.0f, 0.0f, // Right Top
+    0.0f, 1.0f, 0.0f, 0.0f // Left Top
+};
+
+static unsigned int vertex_indices[ 6 ] =
+{
+    0, 1, 2,
+    2, 3, 0
+};
+
 static GLFWwindow* window;
 static unsigned int rect_shader;
 static unsigned int sprite_shader;
 static unsigned int palette_id;
-static glm::mat4 position_matrix;
-static Color background_color = { 0.0f, 0.85f, 1.0f, 1.0f };
+static glm::mat4 projection_matrix;
 static Rect canvas = { 0.0f, 0.0f, CONFIG_WINDOW_WIDTH_PIXELS, CONFIG_WINDOW_HEIGHT_PIXELS };
-static RectGFX background;
 
+static int sprite_mvp_uniform_location;
+static int palette_index_uniform_location;
+static int rect_color_uniform_location;
+static unsigned int rect_vao;
+static int rect_mvp_uniform_location;
 
 //
 //  PUBLIC FUNCTIONS
 //
 ///////////////////////////////////////////////////////////
 
-void render_texture( const Texture& texture, Rect rect )
+void render_texture( const Texture& texture, const Rect& rect )
 {
     glUseProgram( sprite_shader );
-    
-    //glBindTexture( GL_TEXTURE_2D, 1 );
-
-    glm::mat4 view = glm::scale( glm::translate( glm::mat4( 1.0f ), glm::vec3( rect.x, rect.y, 0.0f ) ), glm::vec3( rect.w, rect.h, 0.0f ) );
-    glm::mat4 mvp = position_matrix * view;
-    int position_matrix_uniform_location = glGetUniformLocation( sprite_shader, "u_MVP" );
-    assert( position_matrix_uniform_location != -1 );
-    glUniformMatrix4fv( position_matrix_uniform_location, 1, GL_FALSE, &mvp[ 0 ][ 0 ] );
-
-    int texture_uniform_location = glGetUniformLocation( sprite_shader, "u_Texture" );
-    assert( texture_uniform_location != -1 );
-    glUniform1i( texture_uniform_location, 1 );
-
-    //glBindTexture( GL_TEXTURE_2D, palette_id );
-    int palette_uniform_location = glGetUniformLocation( sprite_shader, "u_Palette" );
-    assert( palette_uniform_location != -1 );
-    glUniform1i( palette_uniform_location, 0 );
-
-    int palette_index_uniform_location = glGetUniformLocation( sprite_shader, "u_PaletteIndex" );
-    assert( palette_index_uniform_location != -1 );
+    glm::mat4 view_matrix = glm::translate( glm::mat4( 1.0f ), glm::vec3( 0.0f, 0.0f, 0.0f ) );
+    glm::mat4 model_matrix = glm::scale( glm::translate( glm::mat4( 1.0f ), glm::vec3( rect.x, rect.y, 0.0f ) ), glm::vec3( rect.w, rect.h, 0.0f ) );
+    glm::mat4 mvp = projection_matrix * view_matrix * model_matrix;
+    glUniformMatrix4fv( sprite_mvp_uniform_location, 1, GL_FALSE, &mvp[ 0 ][ 0 ] );
     glUniform1f( palette_index_uniform_location, ( 1.0f / 255.0f ) * 8.0f * ( float )( 0 ) );
-
-    //glBindTexture( GL_TEXTURE_2D, texture.id );
-
     ogl_call( glBindVertexArray( texture.vao ) );
     ogl_call( glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr ) );
 }
 
-void render_rect( const RectGFX& rect_gfx )
+void render_rect( const Rect& rect, int color )
 {
     glUseProgram( rect_shader );
-    int uniform_location = glGetUniformLocation( rect_shader, "u_Color" );
-    dassert( uniform_location != -1 );
-    ogl_call( glUniform4f( uniform_location, rect_gfx.color.r, rect_gfx.color.g, rect_gfx.color.b, rect_gfx.color.a ) );
-
-    ogl_call( glBindVertexArray( rect_gfx.vao ) );
+    glm::mat4 view_matrix = glm::translate( glm::mat4( 1.0f ), glm::vec3( 0.0f, 0.0f, 0.0f ) );
+    glm::mat4 model_matrix = glm::scale( glm::translate( glm::mat4( 1.0f ), glm::vec3( rect.x, rect.y, 0.0f ) ), glm::vec3( rect.w, rect.h, 0.0f ) );
+    glm::mat4 mvp = projection_matrix * view_matrix * model_matrix;
+    glUniformMatrix4fv( rect_mvp_uniform_location, 1, GL_FALSE, &mvp[ 0 ][ 0 ] );
+    if ( color == 0 ) // If 0, color in background ’stead.
+    {
+        ogl_call( glUniform4f( rect_color_uniform_location, background_color[ 0 ], background_color[ 1 ], background_color[ 2 ], background_color[ 3 ] ) );
+    }
+    else
+    {
+        ogl_call( glUniform4f( rect_color_uniform_location, palette_colors[ color ][ 0 ], palette_colors[ color ][ 1 ], palette_colors[ color ][ 2 ], palette_colors[ color ][ 3 ] ) );
+    }
+    ogl_call( glBindVertexArray( rect_vao ) );
     ogl_call( glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr ) );
 }
 
@@ -167,18 +178,43 @@ void render_init_gfx()
     ogl_call( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
     ogl_call( glEnable( GL_BLEND ) );
     ogl_call( glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA ) );
+    projection_matrix = glm::ortho( 0.0f, 1.0f * CONFIG_WINDOW_WIDTH_PIXELS, 1.0f * CONFIG_WINDOW_HEIGHT_PIXELS, 0.0f, -1.0f, 1.0f );
+
     rect_shader = createShader( rect_vertex_shader_code, rect_fragment_shader_code );
+    ogl_call( glUseProgram( rect_shader ) );
+    rect_color_uniform_location = glGetUniformLocation( rect_shader, "u_Color" );
+    dassert( rect_color_uniform_location != -1 );
+    rect_mvp_uniform_location = glGetUniformLocation( rect_shader, "u_MVP" );
+    assert( rect_mvp_uniform_location != -1 );
+
+    ogl_call( glGenVertexArrays( 1, &rect_vao ) );
+    ogl_call( glBindVertexArray( rect_vao ) );
+
+    unsigned int buffer;
+    ogl_call( glGenBuffers( 1, &buffer ) );
+    ogl_call( glBindBuffer( GL_ARRAY_BUFFER, buffer ) );
+    ogl_call( glBufferData( GL_ARRAY_BUFFER, 4 * 4 * sizeof( float ), vertex_positions, GL_STATIC_DRAW ) );
+
+    ogl_call( glEnableVertexAttribArray( 0 ) );
+    ogl_call( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( float ) * 4, nullptr ) );
+
+    unsigned int ibo;
+    ogl_call( glGenBuffers( 1, &ibo ) );
+    ogl_call( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibo ) );
+    ogl_call( glBufferData( GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof( unsigned int ), vertex_indices, GL_STATIC_DRAW ) );
+
     sprite_shader = createShader( sprite_vertex_shader_code, sprite_fragment_shader_code );
-    ogl_call( glUseProgram( rect_shader ) );
-
-    background = rect_gfx_create( canvas, background_color );
-
-    position_matrix = glm::ortho( 0.0f, 1.0f * CONFIG_WINDOW_WIDTH_PIXELS, 1.0f * CONFIG_WINDOW_HEIGHT_PIXELS, 0.0f, -1.0f, 1.0f );
-
-    ogl_call( glUseProgram( rect_shader ) );
-    int position_matrix_uniform_location = glGetUniformLocation( rect_shader, "u_MVP" );
-    assert( position_matrix_uniform_location != -1 );
-    glUniformMatrix4fv( position_matrix_uniform_location, 1, GL_FALSE, &position_matrix[ 0 ][ 0 ] );
+    ogl_call( glUseProgram( sprite_shader ) );
+    int texture_uniform_location = glGetUniformLocation( sprite_shader, "u_Texture" );
+    assert( texture_uniform_location != -1 );
+    glUniform1i( texture_uniform_location, 1 );
+    int palette_uniform_location = glGetUniformLocation( sprite_shader, "u_Palette" );
+    assert( palette_uniform_location != -1 );
+    glUniform1i( palette_uniform_location, 0 );
+    int sprite_mvp_uniform_location = glGetUniformLocation( sprite_shader, "u_MVP" );
+    assert( sprite_mvp_uniform_location != -1 );
+    palette_index_uniform_location = glGetUniformLocation( sprite_shader, "u_PaletteIndex" );
+    assert( palette_index_uniform_location != -1 );
 
     render_init_palette();
 };
@@ -191,7 +227,7 @@ void render_present()
 void render_start()
 {
     ogl_call( glClear( GL_COLOR_BUFFER_BIT ) );
-    render_rect( background );
+    render_rect( canvas, 0 );
 }
 
 
@@ -246,10 +282,7 @@ static const char* getShaderTypeText( unsigned int type )
 
 static void render_init_palette()
 {
-    ogl_call( glUseProgram( sprite_shader ) );
-    int palette_width = 256;
-    int palette_height = 1;
-    unsigned char palette_buffer[ 256 * 4 ] =
+    unsigned char palette_buffer[ PALETTE_COLORS * CHANNELS_PER_COLOR ] =
     {
         0, 0, 0, 0,
         0, 0, 0, 255,
@@ -510,6 +543,9 @@ static void render_init_palette()
         0, 0, 0, 0,
         0, 0, 0, 0
     };
+    ogl_call( glUseProgram( sprite_shader ) );
+    int palette_width = 256;
+    int palette_height = 1;
     glGenTextures( 0, &palette_id );
     glActiveTexture( GL_TEXTURE0 );
     glBindTexture( GL_TEXTURE_2D, palette_id );
@@ -521,4 +557,14 @@ static void render_init_palette()
     glBindTexture( GL_TEXTURE_2D, 0 );
     glGenTextures( 0, &palette_id );
     glBindTexture( GL_TEXTURE_2D, palette_id );
+
+    // Set palette colors based on palette: unsigned byte -> float
+    for ( int color = 0; color < PALETTE_COLORS; ++color )
+    {
+        for ( int channel = 0; channel < CHANNELS_PER_COLOR; ++channel )
+        {
+            int buffer_index = color * CHANNELS_PER_COLOR + channel;
+            palette_colors[ color ][ channel ] = ( float )( palette_buffer[ buffer_index ] ) / 255.0f;
+        }
+    }
 }
